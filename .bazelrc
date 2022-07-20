@@ -64,6 +64,7 @@ build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
 build:cuda --@local_config_cuda//:enable_cuda
 build:cuda --@org_tensorflow//tensorflow/compiler/xla/python:enable_gpu=true
 build:cuda --define=xla_python_enable_gpu=true
+build:cuda --jobs=8
 
 build:rocm --crosstool_top=@local_config_rocm//crosstool:toolchain
 build:rocm --define=using_rocm=true --define=using_rocm_hipcc=true

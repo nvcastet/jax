@@ -186,12 +186,12 @@ def _memory_space_to_mosaic_attribute(memory_space: MemorySpace | None
 
 def _dtype_to_ir_type(dtype: jnp.dtype,
                       is_kernel_boundary: bool = False) -> ir.Type:
-  if jnp.issubdtype(dtype, tpu_core.semaphore_dtype):
-    if jnp.issubdtype(dtype, tpu_core.dma_semaphore):
+  if jnp.issubdtype(dtype, pallas_core.semaphore_dtype):
+    if jnp.issubdtype(dtype, pallas_core.dma_semaphore):
       return ir.Type.parse("!tpu.dma_semaphore")
-    elif jnp.issubdtype(dtype, tpu_core.semaphore):
+    elif jnp.issubdtype(dtype, pallas_core.semaphore):
       return ir.Type.parse("!tpu.semaphore")
-    elif jnp.issubdtype(dtype, tpu_core.barrier_semaphore):
+    elif jnp.issubdtype(dtype, pallas_core.barrier_semaphore):
       return ir.Type.parse("!tpu.semaphore")
     else:
       raise NotImplementedError
@@ -3251,7 +3251,7 @@ def _alloc_value(
 ) -> ir.Value:
   if isinstance(aval, pallas_core.AbstractMemoryRef):
     memspace = _memory_space_to_mosaic_attribute(aval.memory_space)
-    if jnp.issubdtype(aval.dtype, tpu_core.semaphore_dtype):
+    if jnp.issubdtype(aval.dtype, pallas_core.semaphore_dtype):
       assert aval.memory_space == TPUMemorySpace.SEMAPHORE
       memref_type = aval_to_ir_type(
           ctx.lowering_context.dynamic_shape_replacement_fn,
@@ -3301,8 +3301,8 @@ lowering_rules[primitives.run_scoped_p] = _run_scoped_lowering_rule
 
 def _device_id_to_logical(
     ctx: LoweringRuleContext, device_id,
-    device_id_type: tpu_primitives.DeviceIdType):
-  if device_id_type is tpu_primitives.DeviceIdType.MESH:
+    device_id_type: primitives.DeviceIdType):
+  if device_id_type is primitives.DeviceIdType.MESH:
     # Mesh means we are passed the mesh coordinates for the device
     device_ids = tree_util.tree_leaves(device_id)
     mesh_strides = ctx.lowering_context.mesh_context.mesh_strides
@@ -3317,7 +3317,7 @@ def _device_id_to_logical(
             for a, b in zip(device_ids, mesh_strides)
         ),
     )
-  elif device_id_type is tpu_primitives.DeviceIdType.LOGICAL:
+  elif device_id_type is primitives.DeviceIdType.LOGICAL:
     return device_id
   raise NotImplementedError(f"Unsupported device id type: {device_id_type}")
 

@@ -38,7 +38,7 @@ def sync_copy(src_ref, dst_ref):
   )
   def _(sem):
     def _copy_start_or_wait(action, src_ref, dst_ref):
-      descriptor = plm_primitives.make_async_copy(src_ref, dst_ref, sem)
+      descriptor = pl_primitives.make_async_copy(src_ref, dst_ref, sem)
       if action == "start":
         descriptor.start()
       elif action == "wait":

@@ -19,7 +19,6 @@ import jax
 from jax._src.pallas import helpers as pl_helpers
 from jax._src.pallas import primitives as pl_primitives
 from jax._src.pallas.mosaic import core as tpu_core
-from jax._src.pallas.mosaic import primitives as plm_primitives
 
 
 def sync_copy(src_ref, dst_ref):

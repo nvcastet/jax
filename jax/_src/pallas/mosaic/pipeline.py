@@ -31,7 +31,6 @@ from jax._src import util as jax_util
 from jax._src.pallas import core as pallas_core
 from jax._src.pallas import primitives as primitives
 from jax._src.pallas.mosaic import core as tpu_core
-from jax._src.pallas.mosaic import primitives as tpu_primitives
 from jax.experimental import pallas as pl
 from jax.extend.backend import get_default_device
 import jax.numpy as jnp

@@ -19,9 +19,7 @@ import multiprocessing
 import portpicker
 from absl.testing import absltest
 import jax
-from jax import lax
 from jax._src import test_util as jtu
-from jax.experimental import mesh_utils
 from jax.experimental import pallas as pl
 from jax.experimental import shard_map
 from jax.experimental.pallas import mosaic_gpu as plgpu
@@ -67,9 +65,9 @@ class PallasCallRemoteDMATest(jtu.JaxTestCase):
   def test_basic_remote_dma(self):
     def _test_basic_remote_dma(self):
       # Implements very simple collective permute
-      def kernel(x_ref, ready_sem_alias, recv_sem_alias,
-                 y_ref, ready_sem, recv_sem):
-        del ready_sem_alias, recv_sem_alias
+      def kernel(x_ref,
+                y_ref,
+                ready_sem, recv_sem):
         dev_id = pl.device_id()
         other_dev_id = 1 - dev_id
         pl.semaphore_signal(ready_sem.at[0], device_id=other_dev_id,
@@ -81,34 +79,27 @@ class PallasCallRemoteDMATest(jtu.JaxTestCase):
                             device_id_type=pl.DeviceIdType.LOGICAL)
         pl.semaphore_wait(recv_sem.at[0])
 
+      devices = jax.devices()[:2]
       x = jnp.arange(2 * 8 * 128.0).reshape((2 * 8, 128))
-      ready_sem = jnp.zeros((1,), dtype=jnp.int32)
-      recv_sem = jnp.zeros((1,), dtype=jnp.int32)
-      def body(x, ready_sem, recv_sem):
+      def body(x):
         return pl.pallas_call(
             kernel,
-            in_specs=[pl.BlockSpec(memory_space=plgpu.GMEM),
-                      pl.BlockSpec(memory_space=plgpu.GMEM),
-                      pl.BlockSpec(memory_space=plgpu.GMEM)],
-            out_specs=[pl.BlockSpec(memory_space=plgpu.GMEM),
-                       pl.BlockSpec(memory_space=plgpu.GMEM),
-                       pl.BlockSpec(memory_space=plgpu.GMEM)],
-            out_shape=[jax.ShapeDtypeStruct((8, 128), jnp.float32),
-                       jax.ShapeDtypeStruct((1,), jnp.int32),
-                       jax.ShapeDtypeStruct((1,), jnp.int32)],
-            input_output_aliases={1: 1, 2: 2}
-        )(x, ready_sem, recv_sem)
+            in_specs=[pl.BlockSpec(memory_space=plgpu.GMEM)],
+            out_specs=pl.BlockSpec(memory_space=plgpu.GMEM),
+            out_shape=jax.ShapeDtypeStruct((8, 128), jnp.float32),
+            scratch_shapes=[plgpu.SemaphoreType.REGULAR((1,)),
+                            plgpu.SemaphoreType.REGULAR((1,))],
+        )(x)
 
-      devices = jax.devices()[:2]
       mesh = jax.sharding.Mesh(devices, ['x'])
-      y, _, _ = jax.jit(
-                shard_map.shard_map(
-                  body, mesh,
-                  in_specs=(P('x'), P(None), P(None)),
-                  out_specs=(P('x'), P(None), P(None)),
-                  check_rep=False
-                )
-      )(x, ready_sem, recv_sem)
+      y = jax.jit(
+          shard_map.shard_map(
+            body, mesh,
+            in_specs=P('x'),
+            out_specs=P('x'),
+            check_rep=False
+          )
+      )(x)
       expected = x[8:] if jax.process_index() == 0 else x[:8]
       np.testing.assert_allclose(y.addressable_shards[0].data, expected)
 
